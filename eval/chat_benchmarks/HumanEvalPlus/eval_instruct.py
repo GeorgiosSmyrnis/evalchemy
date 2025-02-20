@@ -10,7 +10,7 @@ from lm_eval.api.instance import Instance
 from lm_eval.api.model import LM
 from human_eval_plus.evaluation import evaluate_functional_correctness
 from .utils.utils import extract_generation_code, language_settings
-from eval.task import BaseBenchmark
+from eval.task import BaseBenchmark, maybe_split_task_across_nodes, maybe_gather_results_across_nodes
 
 
 class HumanEvalPlusBenchmark(BaseBenchmark):
@@ -82,6 +82,7 @@ Please continue to complete the function. You are not allowed to modify the give
                     continue
 
                 examples = [json.loads(x) for x in open(problem_file) if x.strip()]
+                examples = maybe_split_task_across_nodes(examples)
                 self.logger.info(f"Loaded {len(examples)} examples for {lang}")
 
                 if self.debug:
@@ -122,6 +123,7 @@ Please continue to complete the function. You are not allowed to modify the give
                     processed_example = extract_generation_code(example_with_output, lang_code=lang)
                     generated_examples.append(processed_example)
 
+                generated_examples = maybe_gather_results_across_nodes(generated_examples)
                 results[lang] = generated_examples
                 temp_file_path = os.path.join(temp_dir, f"generated_{lang}.jsonl")
                 with open(temp_file_path, "w", encoding="utf-8") as fw:

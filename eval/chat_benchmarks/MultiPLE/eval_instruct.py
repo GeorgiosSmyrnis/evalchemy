@@ -10,7 +10,7 @@ from lm_eval.api.instance import Instance
 from lm_eval.api.model import LM
 from multiple.evaluation import evaluate_functional_correctness
 from utils import extract_generation_code
-from eval.task import BaseBenchmark
+from eval.task import BaseBenchmark, maybe_split_task_across_nodes, maybe_gather_results_across_nodes
 import traceback
 
 
@@ -154,7 +154,7 @@ class MultipleBenchmark(BaseBenchmark):
 
                 with open(problem_file, "r", encoding="utf-8") as fr:
                     examples = json.load(fr)
-                # examples = examples[:100]
+                examples = maybe_split_task_across_nodes(examples)
                 self.logger.info(f"Loaded {len(examples)} examples for {lang}")
 
                 if self.debug:
@@ -201,6 +201,8 @@ class MultipleBenchmark(BaseBenchmark):
                     example_with_output["output"] = output
                     processed_example = extract_generation_code(example_with_output, lang_code=lang)
                     generated_examples.append(processed_example)
+
+                generated_examples = maybe_gather_results_across_nodes(generated_examples)
 
                 results[lang] = generated_examples
                 temp_file_path = os.path.join(temp_dir, f"generated_{lang}.jsonl")

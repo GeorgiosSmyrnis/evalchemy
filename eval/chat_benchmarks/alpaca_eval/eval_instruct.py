@@ -9,7 +9,7 @@ from lm_eval.api.instance import Instance
 from lm_eval.api.model import LM
 from alpaca_eval.main import evaluate as alpaca_eval_evaluate
 from alpaca_eval.constants import DEFAULT_ANNOTATOR_CONFIG
-from eval.task import BaseBenchmark
+from eval.task import BaseBenchmark, maybe_split_task_across_nodes, maybe_gather_results_across_nodes
 
 
 class AlpacaBenchmark(BaseBenchmark):
@@ -87,6 +87,7 @@ class AlpacaBenchmark(BaseBenchmark):
         """
         try:
             eval_set = self.load_dataset()
+            eval_set = maybe_split_task_across_nodes(eval_set)
 
             all_instances = []
             for idx, example in enumerate(eval_set):
@@ -136,6 +137,8 @@ class AlpacaBenchmark(BaseBenchmark):
                     continue
 
             self.logger.info(f"Generated {len(model_outputs)} responses")
+
+            model_outputs = maybe_gather_results_across_nodes(model_outputs)
 
             return {"model_outputs": model_outputs, "model_identifier": model.model_identifier}
 

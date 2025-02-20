@@ -9,7 +9,7 @@ import json
 from lm_eval.api.instance import Instance
 from lm_eval.api.model import LM
 from eval.chat_benchmarks.zeroeval.src.task_configs import prompt_generation
-from eval.task import BaseBenchmark
+from eval.task import BaseBenchmark, maybe_split_task_across_nodes, maybe_gather_results_across_nodes
 
 from .src.unified_utils import mapping_task_names, save_outputs
 from .src.evaluation.zebra_grid_eval import eval_model as zebra_grid_eval_model, load_private_solutions
@@ -119,6 +119,7 @@ class ZeroEvalBenchmark(BaseBenchmark):
 
             # Apply template
             model_inputs = [model.apply_chat_template(chat) for chat in extracted_chats]
+            model_inputs = maybe_split_task_across_nodes(model_inputs)
 
             output_path = os.path.join(temp_dir, f"{task}.json")
             results[task] = output_path
@@ -148,6 +149,7 @@ class ZeroEvalBenchmark(BaseBenchmark):
                 continue
 
             outputs = [[output] for output in outputs]
+            outputs = maybe_gather_results_across_nodes(outputs)
 
             # Save outputs
             save_args = Namespace(

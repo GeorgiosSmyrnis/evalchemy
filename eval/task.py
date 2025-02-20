@@ -15,6 +15,8 @@ from lm_eval.api.model import LM
 from lm_eval.api.instance import Instance
 import lm_eval.models as lm_eval_models
 
+from datasets import Dataset
+import torch.distributed as dist
 
 class BaseBenchmark(ABC):
     """Abstract base class for implementing LLM evaluation benchmarks."""
@@ -258,6 +260,36 @@ def evaluate(
             results["results"][task_name] = {"error": str(e)}
 
     return results
+
+
+def maybe_split_task_across_nodes(questions):
+    if not dist.is_initialized():
+        return questions
+
+    world_size = dist.get_world_size()
+    num_procs_per_node = torch.cuda.device_count()
+    num_nodes = world_size // num_procs_per_node
+    global_rank = dist.get_rank()
+    node_rank = global_rank // num_procs_per_node
+
+    if isinstance(questions, list):
+        questions_rank = list(np.array_split(questions, num_nodes)[node_rank])
+        return questions_rank
+    elif isinstance(questions, Dataset):
+        indices_rank = np.array_split(range(len(questions)), num_nodes)[node_rank]
+        questions_rank = questions.select(indices_rank)
+        return questions_rank
+
+
+def maybe_gather_results_across_nodes(results):
+    if not dist.is_initialized():
+        return results
+
+    world_size = dist.get_world_size()
+    results_per_rank = [[] for _ in range(world_size)]
+    dist.all_gather_object(results_per_rank, results)
+    all_results = [res for res_rank in results_per_rank for res in res_rank]
+    return all_results
 
 
 if __name__ == "__main__":

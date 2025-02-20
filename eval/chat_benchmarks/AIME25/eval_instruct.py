@@ -7,7 +7,7 @@ from lm_eval.api.instance import Instance
 from lm_eval.api.model import LM
 from lm_eval.tasks.hendrycks_math.utils import is_equiv, last_boxed_only_string, remove_boxed
 
-from eval.task import BaseBenchmark
+from eval.task import BaseBenchmark, maybe_split_task_across_nodes, maybe_gather_results_across_nodes
 
 import lm_eval.models
 from lm_eval.models.vllm_causallms import VLLM
@@ -60,6 +60,7 @@ class AIME25Benchmark(BaseBenchmark):
             or None for non-primary ranks
         """
         examples = self.load_questions()
+        examples = maybe_split_task_across_nodes(examples)
         # Prepare instances for model
         all_outputs = []
 
@@ -103,6 +104,7 @@ class AIME25Benchmark(BaseBenchmark):
             example["model_outputs"] = list(outputs)
             example["model_answers"] = [self.extract_answer(o) for o in outputs]
 
+        examples = maybe_gather_results_across_nodes(examples)
         return {"examples": examples}
 
     def evaluate_responses(self, results: Dict[str, Any]) -> Dict[str, float]:

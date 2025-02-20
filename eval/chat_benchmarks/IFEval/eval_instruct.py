@@ -6,7 +6,7 @@ import os
 
 from lm_eval.api.model import LM
 from lm_eval.api.instance import Instance
-from eval.task import BaseBenchmark
+from eval.task import BaseBenchmark, maybe_split_task_across_nodes, maybe_gather_results_across_nodes
 from .evaluation import evaluate_accuracy
 
 
@@ -87,6 +87,7 @@ class IFEvalBenchmark(BaseBenchmark):
 
             problem_file = os.path.join(self.data_dir, "input_data.jsonl")
             examples = list(self.read_test_examples(problem_file))
+            examples = maybe_split_task_across_nodes(examples)
             self.logger.info(f"Process {len(examples)} examples")
 
             all_instances = []
@@ -128,6 +129,8 @@ class IFEvalBenchmark(BaseBenchmark):
                 except Exception as e:
                     self.logger.error(f"Error processing output for {example['key']}: {str(e)}")
                     continue
+
+            generated_examples = maybe_gather_results_across_nodes(generated_examples)
 
             output_path = os.path.join(temp_dir, "ifeval.jsonl")
 

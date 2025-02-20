@@ -11,7 +11,7 @@ from lm_eval.api.model import LM
 import re
 import itertools
 
-from eval.task import BaseBenchmark
+from eval.task import BaseBenchmark, maybe_split_task_across_nodes, maybe_gather_results_across_nodes
 
 from .evaluation import evaluate_generations
 
@@ -187,6 +187,8 @@ class CruxEvalBenchmark(BaseBenchmark):
                     for line in fr:
                         examples.append(json.loads(line))
 
+                examples = maybe_split_task_across_nodes(examples)
+
                 if self.debug:
                     examples = examples[:10]
                     self.logger.info(f"Debug mode enabled. Using only {len(examples)} examples.")
@@ -235,6 +237,8 @@ class CruxEvalBenchmark(BaseBenchmark):
                     example_with_output["task_id"] = example_with_output.pop("id")
 
                     generated_examples.append(example_with_output)
+
+                generated_examples = maybe_gather_results_across_nodes(generated_examples)
 
                 results[task] = generated_examples
                 temp_file_path = os.path.join(temp_dir, f"generated_{task}.jsonl")

@@ -14,7 +14,7 @@ import json
 import copy
 from .livecodebench_utils import lcb_run, map_to_example, has_test_type, post_process_code, translate_private_test_cases
 
-from eval.task import BaseBenchmark
+from eval.task import BaseBenchmark, maybe_split_task_across_nodes, maybe_gather_results_across_nodes
 from datasets import load_dataset
 
 import lm_eval.models
@@ -71,6 +71,7 @@ class LiveCodeBenchBenchmark(BaseBenchmark):
             or None for non-primary ranks
         """
         examples = self.load_questions()
+        examples = maybe_split_task_across_nodes(examples)
         if self.debug:
             examples = examples[:10]
 
@@ -123,6 +124,7 @@ class LiveCodeBenchBenchmark(BaseBenchmark):
             example["model_answer"] = has_code(output)
             examples_list.append(example)
 
+        examples_list = maybe_gather_results_across_nodes(examples_list)
         return {"examples": examples_list}
 
     @staticmethod

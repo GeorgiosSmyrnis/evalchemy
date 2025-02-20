@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from lm_eval.api.instance import Instance
 from lm_eval.api.model import LM
-from eval.task import BaseBenchmark
+from eval.task import BaseBenchmark, maybe_split_task_across_nodes, maybe_gather_results_across_nodes
 
 # Import WildBench utilities
 from .src.unified_utils import save_outputs
@@ -173,6 +173,7 @@ class WildBenchBenchmark(BaseBenchmark):
 
             # Prepare model inputs
             model_inputs = [model.apply_chat_template(chat) for chat in simplified_extracted_chats]
+            model_inputs = maybe_split_task_across_nodes(model_inputs)
 
             # Create temporary directory
             temp_dir_obj = tempfile.TemporaryDirectory()
@@ -205,6 +206,7 @@ class WildBenchBenchmark(BaseBenchmark):
                 return None
 
             outputs = [[output] for output in outputs]
+            outputs = maybe_gather_results_across_nodes(outputs)
 
             # Save outputs
             save_outputs(self.config, id_strs, outputs, chat_history, metadata, model_inputs, output_path)

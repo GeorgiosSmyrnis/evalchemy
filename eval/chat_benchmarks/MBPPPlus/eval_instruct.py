@@ -11,7 +11,7 @@ from lm_eval.api.instance import Instance
 from lm_eval.api.model import LM
 from mbpp_plus.evaluation import evaluate_functional_correctness
 from .utils.utils import extract_generation_code, language_settings
-from eval.task import BaseBenchmark
+from eval.task import BaseBenchmark, maybe_split_task_across_nodes, maybe_gather_results_across_nodes
 
 
 class MBPPPlusBenchmark(BaseBenchmark):
@@ -132,6 +132,7 @@ Here is my problem:
 
             problem_file = os.path.join(self.data_dir, "mbppplus.jsonl")
             examples = list(self.read_test_examples(problem_file))
+            examples = maybe_split_task_across_nodes(examples)
             self.logger.info(f"Processing {len(examples)} examples")
 
             all_instances = []
@@ -174,6 +175,8 @@ Here is my problem:
                 except Exception as e:
                     self.logger.error(f"Error processing output for {example['task_id']}: {str(e)}")
                     continue
+
+            generated_examples = maybe_gather_results_across_nodes(generated_examples)
 
             output_path = os.path.join(temp_dir, "generated_python.jsonl")
             with open(output_path, "w", encoding="utf-8") as fw:
